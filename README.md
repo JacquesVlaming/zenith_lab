@@ -16,7 +16,7 @@ Minimal lab to test the Elastic APM .NET profiler on IIS without touching produc
 | App Pool + Site (port 8080) | ✅ Done |
 | Profiler Install (v1.34.6-win-x64) | ✅ Done |
 | Env Vars + Permissions | ✅ Done |
-| Verify APM data in Kibana | 🔄 In progress |
+| Verify APM data in Kibana | ✅ Done |
 
 ---
 
