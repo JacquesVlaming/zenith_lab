@@ -90,9 +90,8 @@ Copy-Item C:\zenith_lab\PortfolioController.cs C:\FixedIncomeTest\Controllers\Po
 Copy-Item C:\zenith_lab\SettlementsController.cs C:\FixedIncomeTest\Controllers\SettlementsController.cs
 ```
 
-Remove default files and publish (stop IIS first to avoid file lock):
+Publish (stop IIS first to avoid file lock):
 ```powershell
-Remove-Item C:\FixedIncomeTest\WeatherForecast.cs
 Stop-Service WAS -Force; dotnet publish C:\FixedIncomeTest -c Release -o C:\inetpub\FixedIncomeTest; Start-Service W3SVC
 ```
 
