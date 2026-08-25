@@ -8,7 +8,7 @@ Minimal lab to test the Elastic APM .NET profiler on IIS without touching produc
 
 | Step | Status |
 |---|---|
-| GCP Windows Server 2022 (africa-south1-a, 34.35.125.118) | ✅ Done |
+| GCP Windows Server 2022 (africa-south1-a) | ✅ Done |
 | IIS Install | ✅ Done |
 | .NET 8 SDK (v8.0.424) | ✅ Done |
 | .NET 8 Hosting Bundle (v8.0.30) | ✅ Done |
@@ -29,9 +29,9 @@ Minimal lab to test the Elastic APM .NET profiler on IIS without touching produc
 | .NET Version | .NET 8 |
 | Architecture | x64 |
 | VM | GCP e2-standard-4, africa-south1-a |
-| External IP | 34.35.125.118 |
+| External IP | <your-vm-ip> |
 | App Port | 8080 |
-| APM Server | https://773fae6c67c14227bdc5237c09e58144.apm.us-central1.gcp.cloud.es.io:443 |
+| APM Server | <your-apm-server-url> |
 
 ---
 
@@ -137,7 +137,7 @@ $vars = @{
   "CORECLR_PROFILER_PATH"             = "$profilerDir\elastic_apm_profiler.dll"
   "ELASTIC_APM_PROFILER_HOME"         = "$profilerDir"
   "ELASTIC_APM_PROFILER_INTEGRATIONS" = "$profilerDir\integrations.yml"
-  "ELASTIC_APM_SERVER_URL"            = "https://773fae6c67c14227bdc5237c09e58144.apm.us-central1.gcp.cloud.es.io:443"
+  "ELASTIC_APM_SERVER_URL"            = "<your-apm-server-url>"
   "ELASTIC_APM_API_KEY"               = "<api-key>"
   "ELASTIC_APM_SERVICE_NAME"          = "FixedIncomeTest"
   "ELASTIC_APM_LOG_LEVEL"             = "Debug"
