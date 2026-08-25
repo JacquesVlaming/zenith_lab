@@ -1,0 +1,10 @@
+services:
+  traffic-gen:
+    build: .
+    environment:
+      TARGET_URL: http://host.docker.internal:8080   # points to your local VM via RDP tunnel or change to VM IP
+      MIN_DELAY: "0.5"
+      MAX_DELAY: "3.0"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
