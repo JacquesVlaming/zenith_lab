@@ -77,19 +77,11 @@ dotnet --version
 dotnet new webapi -n FixedIncomeTest -o C:\FixedIncomeTest --no-openapi
 ```
 
-Update `C:\FixedIncomeTest\Program.cs`:
-```powershell
-Set-Content C:\FixedIncomeTest\Program.cs "var builder = WebApplication.CreateBuilder(args);"
-Add-Content C:\FixedIncomeTest\Program.cs "builder.Services.AddControllers();"
-Add-Content C:\FixedIncomeTest\Program.cs "var app = builder.Build();"
-Add-Content C:\FixedIncomeTest\Program.cs "app.MapControllers();"
-Add-Content C:\FixedIncomeTest\Program.cs "app.Run();"
-```
-
-Clone controllers from GitHub and copy into project:
+Clone the repo and copy all files into the project:
 ```powershell
 git clone https://github.com/JacquesVlaming/zenith_lab.git C:\zenith_lab
 New-Item -ItemType Directory -Path C:\FixedIncomeTest\Controllers
+Copy-Item C:\zenith_lab\Program.cs C:\FixedIncomeTest\Program.cs
 Copy-Item C:\zenith_lab\Models.cs C:\FixedIncomeTest\Models.cs
 Copy-Item C:\zenith_lab\BondsController.cs C:\FixedIncomeTest\Controllers\BondsController.cs
 Copy-Item C:\zenith_lab\TreasuryBillsController.cs C:\FixedIncomeTest\Controllers\TreasuryBillsController.cs
