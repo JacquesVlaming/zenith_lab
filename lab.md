@@ -1,212 +1,168 @@
+# Elastic APM .NET Profiler Lab — IIS / No Managed Code
 
-Here's a minimal lab spec to test the Elastic APM .NET profiler on IIS without touching production.
+Minimal lab to test the Elastic APM .NET profiler on IIS without touching production.
+
+---
 
 ## Deployment Status
+
 | Step | Status |
 |---|---|
 | GCP Windows Server 2022 (africa-south1-a, 34.35.125.118) | ✅ Done |
 | IIS Install | ✅ Done |
+| .NET 8 SDK (v8.0.424) | ✅ Done |
 | .NET 8 Hosting Bundle (v8.0.30) | ✅ Done |
-| Test App (FixedIncomeTest) | 🔄 In progress |
-| App Pool + Site | ⏳ Pending |
-| Profiler Install | ⏳ Pending |
-| Env Vars + Permissions | ⏳ Pending |
-| Verify APM data in Kibana | ⏳ Pending |
+| Test App (FixedIncomeTest) | ✅ Done |
+| App Pool + Site (port 8080) | ✅ Done |
+| Profiler Install (v1.34.6-win-x64) | ✅ Done |
+| Env Vars + Permissions | ✅ Done |
+| Verify APM data in Kibana | 🔄 In progress |
 
 ---
 
-### Lab Spec: Elastic APM Profiler on IIS (.NET / No Managed Code)
+## Infrastructure
+
+| Component | Value |
+|---|---|
+| OS | Windows Server 2022 |
+| IIS Version | 10 |
+| .NET Version | .NET 8 |
+| Architecture | x64 |
+| VM | GCP e2-standard-4, africa-south1-a |
+| External IP | 34.35.125.118 |
+| App Port | 8080 |
+| APM Server | https://773fae6c67c14227bdc5237c09e58144.apm.us-central1.gcp.cloud.es.io:443 |
 
 ---
 
-#### Commands Run
+## API Endpoints
 
-**IIS Install**
+| Method | Path | Description |
+|---|---|---|
+| GET | /api/bonds | List all bonds |
+| GET | /api/bonds/{isin} | Get bond by ISIN |
+| GET | /api/treasurybills | List treasury bills |
+| GET | /api/yield-curve | Current yield curve |
+| GET | /api/portfolio/summary | Portfolio summary |
+| GET | /api/settlements | List settlements |
+| GET | /api/settlements/{id} | Get settlement by ID |
+| POST | /api/settlements | Submit a settlement |
+
+---
+
+## Step-by-Step Commands
+
+### 1. IIS
 ```powershell
 Install-WindowsFeature -Name Web-Server, Web-Mgmt-Console, Web-Scripting-Tools -IncludeManagementTools
 ```
 
-**ASP.NET Core Hosting Bundle (v8.0.30)**
+### 2. .NET 8 Hosting Bundle
 ```powershell
-Invoke-WebRequest "https://builds.dotnet.microsoft.com/dotnet/aspnetcore/Runtime/8.0.30/dotnet-hosting-8.0.30-win.exe" `
-  -OutFile "C:\dotnet-hosting-bundle.exe"
-
+Invoke-WebRequest "https://builds.dotnet.microsoft.com/dotnet/aspnetcore/Runtime/8.0.30/dotnet-hosting-8.0.30-win.exe" -OutFile "C:\dotnet-hosting-bundle.exe"
 Start-Process "C:\dotnet-hosting-bundle.exe" -ArgumentList "/quiet /norestart" -Wait
-
 Stop-Service WAS -Force; Start-Service W3SVC
 ```
 
+### 3. .NET 8 SDK
+```powershell
+Invoke-WebRequest "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.424/dotnet-sdk-8.0.424-win-x64.exe" -OutFile "C:\dotnet-sdk.exe"
+Start-Process "C:\dotnet-sdk.exe" -ArgumentList "/quiet /norestart" -Wait
+$env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
+dotnet --version
+```
+
+### 4. Create and publish the app
+```powershell
+dotnet new webapi -n FixedIncomeTest -o C:\FixedIncomeTest --no-openapi
+```
+
+Update `C:\FixedIncomeTest\Program.cs`:
+```powershell
+Set-Content C:\FixedIncomeTest\Program.cs "var builder = WebApplication.CreateBuilder(args);"
+Add-Content C:\FixedIncomeTest\Program.cs "builder.Services.AddControllers();"
+Add-Content C:\FixedIncomeTest\Program.cs "var app = builder.Build();"
+Add-Content C:\FixedIncomeTest\Program.cs "app.MapControllers();"
+Add-Content C:\FixedIncomeTest\Program.cs "app.Run();"
+```
+
+Clone controllers from GitHub and copy into project:
+```powershell
+git clone https://github.com/JacquesVlaming/zenith_lab.git C:\zenith_lab
+New-Item -ItemType Directory -Path C:\FixedIncomeTest\Controllers
+Copy-Item C:\zenith_lab\Models.cs C:\FixedIncomeTest\Models.cs
+Copy-Item C:\zenith_lab\BondsController.cs C:\FixedIncomeTest\Controllers\BondsController.cs
+Copy-Item C:\zenith_lab\TreasuryBillsController.cs C:\FixedIncomeTest\Controllers\TreasuryBillsController.cs
+Copy-Item C:\zenith_lab\YieldCurveController.cs C:\FixedIncomeTest\Controllers\YieldCurveController.cs
+Copy-Item C:\zenith_lab\PortfolioController.cs C:\FixedIncomeTest\Controllers\PortfolioController.cs
+Copy-Item C:\zenith_lab\SettlementsController.cs C:\FixedIncomeTest\Controllers\SettlementsController.cs
+```
+
+Remove default files and publish (stop IIS first to avoid file lock):
+```powershell
+Remove-Item C:\FixedIncomeTest\WeatherForecast.cs
+Stop-Service WAS -Force; dotnet publish C:\FixedIncomeTest -c Release -o C:\inetpub\FixedIncomeTest; Start-Service W3SVC
+```
+
+### 5. IIS App Pool and Site
+```powershell
+& "$env:systemroot\system32\inetsrv\AppCmd.exe" add apppool /name:"FixedIncomeTest" /managedRuntimeVersion:"" /managedPipelineMode:"Integrated"
+& "$env:systemroot\system32\inetsrv\AppCmd.exe" add site /name:"FixedIncomeTest" /physicalPath:"C:\inetpub\FixedIncomeTest" /bindings:"http/*:8080:"
+& "$env:systemroot\system32\inetsrv\AppCmd.exe" set app "FixedIncomeTest/" /applicationPool:"FixedIncomeTest"
+```
+
+### 6. Permissions
+```powershell
+New-Item -ItemType Directory -Force -Path C:\elastic_apm_logs
+$acl = Get-Acl "C:\inetpub\FixedIncomeTest"; $acl.SetAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule("IIS AppPool\FixedIncomeTest","ReadAndExecute","ContainerInherit,ObjectInherit","None","Allow"))); Set-Acl "C:\inetpub\FixedIncomeTest" $acl
+$acl = Get-Acl "C:\elastic_apm_logs"; $acl.SetAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule("IIS AppPool\FixedIncomeTest","Modify","ContainerInherit,ObjectInherit","None","Allow"))); Set-Acl "C:\elastic_apm_logs" $acl
+```
+
+### 7. Install Profiler
+```powershell
+Invoke-WebRequest "https://github.com/elastic/apm-agent-dotnet/releases/download/v1.34.6/elastic_apm_profiler_1.34.6-win-x64.zip" -OutFile "C:\elastic_apm_profiler.zip"
+Expand-Archive "C:\elastic_apm_profiler.zip" -DestinationPath "C:\elastic_apm_profiler"
+Get-ChildItem "C:\elastic_apm_profiler" -Recurse | Unblock-File
+```
+
+### 8. Set Env Vars on App Pool
+```powershell
+$appcmd = "$env:systemroot\system32\inetsrv\AppCmd.exe"
+$appPool = "FixedIncomeTest"
+$profilerDir = "C:\elastic_apm_profiler"
+
+$vars = @{
+  "CORECLR_ENABLE_PROFILING"          = "1"
+  "CORECLR_PROFILER"                  = "{FA65FE15-F085-4681-9B20-95E04F6C03CC}"
+  "CORECLR_PROFILER_PATH"             = "$profilerDir\elastic_apm_profiler.dll"
+  "ELASTIC_APM_PROFILER_HOME"         = "$profilerDir"
+  "ELASTIC_APM_PROFILER_INTEGRATIONS" = "$profilerDir\integrations.yml"
+  "ELASTIC_APM_SERVER_URL"            = "https://773fae6c67c14227bdc5237c09e58144.apm.us-central1.gcp.cloud.es.io:443"
+  "ELASTIC_APM_API_KEY"               = "<api-key>"
+  "ELASTIC_APM_SERVICE_NAME"          = "FixedIncomeTest"
+  "ELASTIC_APM_LOG_LEVEL"             = "Debug"
+  "ELASTIC_APM_PROFILER_LOG_DIR"      = "C:\elastic_apm_logs"
+}
+
+$vars.Keys | ForEach-Object { & $appcmd set config -section:system.applicationHost/applicationPools /+"[name='$appPool'].environmentVariables.[name='$_',value='$($vars[$_])']" }
+```
+
+### 9. Restart and Test
+```powershell
+iisreset /stop
+iisreset /start
+Invoke-WebRequest http://localhost:8080/api/bonds
+Start-Sleep -Seconds 5; Get-Content "C:\elastic_apm_logs\*.log" -Tail 30
+```
+
 ---
 
-#### Infrastructure
+## Success Criteria
 
-|Component|Spec|
+| Check | Expected |
 |---|---|
-|OS|Windows Server 2019 or 2022|
-|IIS Version|10+|
-|.NET Version|.NET 8 (to match No Managed Code pool)|
-|APM Server|Existing Elastic cluster or local Docker instance|
-|Architecture|x64 only|
-
----
-
-#### Lab Application
-
-A minimal ASP.NET Core Web API — no need to use real code:
-
-powershell
-
-```powershell
-# On the lab server
-dotnet new webapi -n FixedIncomeTest
-cd FixedIncomeTest
-dotnet publish -c Release -o C:\inetpub\FixedIncomeTest
-```
-
----
-
-#### IIS Setup
-
-**Create the app pool:**
-
-powershell
-
-```powershell
-& "$($env:systemroot)\system32\inetsrv\AppCmd.exe" add apppool /name:"FixedIncomeTest" /managedRuntimeVersion:"" /managedPipelineMode:"Integrated"
-```
-
-`managedRuntimeVersion:""` sets it to No Managed Code.
-
-**Create the site/application:**
-
-powershell
-
-```powershell
-& "$($env:systemroot)\system32\inetsrv\AppCmd.exe" add site `
-    /name:"FixedIncomeTest" `
-    /physicalPath:"C:\inetpub\FixedIncomeTest" `
-    /bindings:"http/*:8080:"
-
-& "$($env:systemroot)\system32\inetsrv\AppCmd.exe" set app `
-    "FixedIncomeTest/" /applicationPool:"FixedIncomeTest"
-```
-
----
-
-#### Profiler Setup
-
-**Download and unzip:**
-
-powershell
-
-```powershell
-$version = "1.34.1"  # match your production version
-$dest = "C:\elastic_apm_profiler"
-Invoke-WebRequest `
-    "https://github.com/elastic/apm-agent-dotnet/releases/download/v$version/elastic_apm_profiler_$version.zip" `
-    -OutFile "C:\elastic_apm_profiler.zip"
-Expand-Archive "C:\elastic_apm_profiler.zip" -DestinationPath $dest
-```
-
-**Unblock all DLLs** (critical on Windows Server):
-
-powershell
-
-```powershell
-Get-ChildItem $dest -Recurse | Unblock-File
-```
-
-**Apply env vars to the test pool:**
-
-powershell
-
-```powershell
-$appcmd = "$($env:systemroot)\system32\inetsrv\AppCmd.exe"
-$appPool = "FixedIncomeTest"
-$profilerHomeDir = "C:\elastic_apm_profiler"
-
-$environment = @{
-  CORECLR_ENABLE_PROFILING            = "1"
-  CORECLR_PROFILER                    = "{FA65FE15-F085-4681-9B20-95E04F6C03CC}"
-  CORECLR_PROFILER_PATH               = "$profilerHomeDir\elastic_apm_profiler.dll"
-  ELASTIC_APM_PROFILER_HOME           = "$profilerHomeDir"
-  ELASTIC_APM_PROFILER_INTEGRATIONS   = "$profilerHomeDir\integrations.yml"
-  ELASTIC_APM_SERVER_URL              = "https://<your-apm-server>:8200"
-  ELASTIC_APM_API_KEY                 = "<your-api-key>"
-  ELASTIC_APM_SERVICE_NAME            = "FixedIncomeTest"
-  OTEL_LOG_LEVEL                      = "debug"
-  OTEL_DOTNET_AUTO_LOG_DIRECTORY      = "C:\elastic_apm_logs"
-}
-
-$environment.Keys | ForEach-Object {
-  & $appcmd set config -section:system.applicationHost/applicationPools `
-    /+"[name='$appPool'].environmentVariables.[name='$_',value='$($environment[$_])']"
-}
-```
-
----
-
-#### Permissions
-
-powershell
-
-```powershell
-$profilerHomeDir = "C:\elastic_apm_profiler"
-$logDir = "C:\elastic_apm_logs"
-$appPool = "FixedIncomeTest"
-
-New-Item -ItemType Directory -Force -Path $logDir
-
-# Profiler dir - read/execute
-$acl = Get-Acl $profilerHomeDir
-$acl.SetAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule(
-    "IIS AppPool\$appPool","ReadAndExecute",
-    "ContainerInherit,ObjectInherit","None","Allow")))
-Set-Acl $profilerHomeDir $acl
-
-# Log dir - modify
-$acl = Get-Acl $logDir
-$acl.SetAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule(
-    "IIS AppPool\$appPool","Modify",
-    "ContainerInherit,ObjectInherit","None","Allow")))
-Set-Acl $logDir $acl
-
-# App dir - read/execute
-$acl = Get-Acl "C:\inetpub\FixedIncomeTest"
-$acl.SetAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule(
-    "IIS AppPool\$appPool","ReadAndExecute",
-    "ContainerInherit,ObjectInherit","None","Allow")))
-Set-Acl "C:\inetpub\FixedIncomeTest" $acl
-```
-
----
-
-#### Start & Test
-
-powershell
-
-```powershell
-# Restart IIS properly
-Stop-Service WAS -Force
-Start-Service W3SVC
-
-# Hit an endpoint to wake the pool
-Invoke-WebRequest http://localhost:8080/weatherforecast
-
-# Check for log file
-Start-Sleep -Seconds 5
-Get-ChildItem "C:\elastic_apm_logs"
-Get-Content "C:\elastic_apm_logs\*.log" -Tail 50
-```
-
----
-
-#### Success Criteria
-
-| Check                                     | Expected                              |
-| ----------------------------------------- | ------------------------------------- |
-| Log file created                          | Yes, in `C:\elastic_apm_logs`         |
-| Log contains `PayloadSenderV2 Sent items` | Confirms connectivity to APM server   |
-| Log contains `Transaction`                | Confirms HTTP instrumentation working |
-| Kibana APM → Services                     | `FixedIncomeTest` appears             |
-| Kibana APM → Transactions                 | `GET /weatherforecast` appears        |
+| Log file created | Yes, in `C:\elastic_apm_logs` |
+| Log contains `PayloadSenderV2 Sent items` | Confirms connectivity to APM server |
+| Log contains `Transaction` | Confirms HTTP instrumentation working |
+| Kibana APM → Services | `FixedIncomeTest` appears |
+| Kibana APM → Transactions | `GET /api/bonds` etc. appear |
