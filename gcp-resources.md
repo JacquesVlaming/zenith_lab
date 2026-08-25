@@ -15,12 +15,14 @@
 | Name | Ports | Target | Status |
 |---|---|---|---|
 | zenith-apm-lab-rdp | TCP 3389 | tag: zenith-apm-lab | ACTIVE |
+| zenith-apm-lab-8080 | TCP 8080 | tag: zenith-apm-lab | ACTIVE |
 
 ## Destroy Commands
 ```bash
 # Delete VM
 gcloud compute instances delete zenith-apm-lab --zone=africa-south1-a --project=elastic-sa --quiet
 
-# Delete firewall rule
+# Delete firewall rules
 gcloud compute firewall-rules delete zenith-apm-lab-rdp --project=elastic-sa --quiet
+gcloud compute firewall-rules delete zenith-apm-lab-8080 --project=elastic-sa --quiet
 ```

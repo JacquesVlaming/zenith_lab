@@ -1,0 +1,18 @@
+cluster.name: my-cluster
+node.name: cold-node-1
+
+node.roles: [ data_cold ]
+
+network.host: 192.168.1.13
+http.port: 9200
+transport.port: 9300
+
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
+
+discovery.seed_hosts:
+  - 192.168.1.10:9300   # hot-node-1
+  - 192.168.1.11:9300   # hot-node-2
+  - 192.168.1.12:9300   # warm-node-1
+
+# No cluster.initial_master_nodes — not master-eligible
