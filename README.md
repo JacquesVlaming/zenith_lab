@@ -10,8 +10,8 @@ Minimal lab to test the Elastic APM .NET profiler on IIS without touching produc
 |---|---|
 | GCP Windows Server 2022 (africa-south1-a) | ✅ Done |
 | IIS Install | ✅ Done |
-| .NET 8 SDK (v8.0.424) | ✅ Done |
-| .NET 8 Hosting Bundle (v8.0.30) | ✅ Done |
+| .NET 6 SDK (v6.0.428) | ✅ Done |
+| .NET 6 Hosting Bundle (v6.0.36) | ✅ Done |
 | Test App (FixedIncomeTest) | ✅ Done |
 | App Pool + Site (port 8080) | ✅ Done |
 | Profiler Install (v1.34.6-win-x64) | ✅ Done |
@@ -26,7 +26,7 @@ Minimal lab to test the Elastic APM .NET profiler on IIS without touching produc
 |---|---|
 | OS | Windows Server 2022 |
 | IIS Version | 10 |
-| .NET Version | .NET 8 |
+| .NET Version | .NET 6 |
 | Architecture | x64 |
 | VM | GCP e2-standard-4, africa-south1-a |
 | External IP | <your-vm-ip> |
@@ -57,16 +57,16 @@ Minimal lab to test the Elastic APM .NET profiler on IIS without touching produc
 Install-WindowsFeature -Name Web-Server, Web-Mgmt-Console, Web-Scripting-Tools -IncludeManagementTools
 ```
 
-### 2. .NET 8 Hosting Bundle
+### 2. .NET 6 Hosting Bundle
 ```powershell
-Invoke-WebRequest "https://builds.dotnet.microsoft.com/dotnet/aspnetcore/Runtime/8.0.30/dotnet-hosting-8.0.30-win.exe" -OutFile "C:\dotnet-hosting-bundle.exe"
+Invoke-WebRequest "https://builds.dotnet.microsoft.com/dotnet/aspnetcore/Runtime/6.0.36/dotnet-hosting-6.0.36-win.exe" -OutFile "C:\dotnet-hosting-bundle.exe"
 Start-Process "C:\dotnet-hosting-bundle.exe" -ArgumentList "/quiet /norestart" -Wait
 Stop-Service WAS -Force; Start-Service W3SVC
 ```
 
-### 3. .NET 8 SDK
+### 3. .NET 6 SDK
 ```powershell
-Invoke-WebRequest "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.424/dotnet-sdk-8.0.424-win-x64.exe" -OutFile "C:\dotnet-sdk.exe"
+Invoke-WebRequest "https://builds.dotnet.microsoft.com/dotnet/Sdk/6.0.428/dotnet-sdk-6.0.428-win-x64.exe" -OutFile "C:\dotnet-sdk.exe"
 Start-Process "C:\dotnet-sdk.exe" -ArgumentList "/quiet /norestart" -Wait
 $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
 dotnet --version

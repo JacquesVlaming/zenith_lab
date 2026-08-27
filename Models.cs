@@ -6,7 +6,7 @@ public record Bond(
     string Currency,
     decimal FaceValue,
     decimal CouponRate,
-    DateOnly MaturityDate,
+    DateTime MaturityDate,
     string Status
 );
 
@@ -14,8 +14,8 @@ public record TreasuryBill(
     string BillId,
     decimal FaceValue,
     decimal DiscountRate,
-    DateOnly IssueDate,
-    DateOnly MaturityDate,
+    DateTime IssueDate,
+    DateTime MaturityDate,
     string Status
 );
 
