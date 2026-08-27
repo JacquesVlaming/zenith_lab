@@ -14,7 +14,7 @@ Minimal lab to test the Elastic APM .NET profiler on IIS without touching produc
 | .NET 6 Hosting Bundle (v6.0.36) | ✅ Done |
 | Test App (FixedIncomeTest) | ✅ Done |
 | App Pool + Site (port 8080) | ✅ Done |
-| Profiler Install (v1.34.6-win-x64) | ✅ Done |
+| Profiler Install (v1.28.6-win-x64) | ✅ Done |
 | Env Vars + Permissions | ✅ Done |
 | Verify APM data in Kibana | ✅ Done |
 
@@ -110,8 +110,12 @@ $acl = Get-Acl "C:\elastic_apm_logs"; $acl.SetAccessRule((New-Object System.Secu
 ```
 
 ### 7. Install Profiler
+
+> **Note:** Use v1.28.6 for .NET 6. Profiler v1.29+ bundles `System.Diagnostics.DiagnosticSource 8.0.0.0`
+> which is incompatible with the .NET 6 runtime — the agent will fail to initialise.
+
 ```powershell
-Invoke-WebRequest "https://github.com/elastic/apm-agent-dotnet/releases/download/v1.34.6/elastic_apm_profiler_1.34.6-win-x64.zip" -OutFile "C:\elastic_apm_profiler.zip"
+Invoke-WebRequest "https://github.com/elastic/apm-agent-dotnet/releases/download/v1.28.6/elastic_apm_profiler_1.28.6-win-x64.zip" -OutFile "C:\elastic_apm_profiler.zip"
 Expand-Archive "C:\elastic_apm_profiler.zip" -DestinationPath "C:\elastic_apm_profiler"
 Get-ChildItem "C:\elastic_apm_profiler" -Recurse | Unblock-File
 ```
